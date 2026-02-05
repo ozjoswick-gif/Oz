@@ -15,7 +15,7 @@ import javax.swing.JPanel;
 
 public class FieldPanel extends JPanel {
     private static final int FIELD_UNITS = 144;
-    private static final int ROBOT_SIZE_UNITS = 10;
+    public static final int ROBOT_SIZE_UNITS = 15;
     private static final int SCALE = 4;
 
     // NEW: for bottom-right origin

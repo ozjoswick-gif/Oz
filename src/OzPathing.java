@@ -2,13 +2,6 @@ import Developer.Pose;
 import Developer.Robot;
 import Developer.Telemetry;
 
-/**
- * OzPathing - drive-to-point using mecanum translation while rotating gradually.
- *
- * IMPORTANT: This variant computes world and robot-frame errors relative to the
- * robot's center (not the top-left corner). That makes the robot drive its
- * center to the target pose instead of stopping when an edge touches it.
- */
 public class OzPathing {
     private Pose startPose; // never ended up using this for this version
     private Pose targetPose;
@@ -16,7 +9,7 @@ public class OzPathing {
     private final Robot robot;
 
     // Robot footprint (must match FieldPanel.ROBOT_SIZE_UNITS)
-    private static final double ROBOT_SIZE_UNITS = 10.0;
+    private static final double ROBOT_SIZE_UNITS = 15.0;
     private static final double ROBOT_HALF = ROBOT_SIZE_UNITS * 0.5;
 
     // Translation tuning
@@ -42,6 +35,7 @@ public class OzPathing {
 
     public OzPathing(Robot robot) {
         this.robot = robot;
+
     }
 
     public void follow(Pose start, Pose target) {

@@ -64,7 +64,6 @@ public class Robot {
     public double getY() { return y;}
     public double getHeading() { return heading; }
 
-    // ALL INCONSISTENCY FUNCTIONS - UNCHANGED:
     public void setInconsistency(double inconsistency) { this.inconsistency = inconsistency; }
 
     public void setPose(Pose pose) {
@@ -79,20 +78,6 @@ public class Robot {
         return power + noise;
     }
 
-    // RELATIVE POSITION FUNCTIONS - UNCHANGED:
-    public double getRelX(double worldX, double worldY) {
-        double dx = worldX - this.x;
-        double dy = worldY - this.y;
-        return dx * Math.cos(heading) + dy * Math.sin(heading);
-    }
-
-    public double getRelY(double worldX, double worldY) {
-        double dx = worldX - this.x;
-        double dy = worldY - this.y;
-        return -dx * Math.sin(heading) + dy * Math.cos(heading);
-    }
-
-    // NEW SMOOTHING:
     private double smoothAsymmetric(double current, double target, double accelRate, double decelRate) {
         if (current < target) {
             return current + accelRate * (target - current);

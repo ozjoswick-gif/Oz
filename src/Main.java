@@ -54,7 +54,7 @@ public class Main{
 
         renderer.runOnEDT(() -> {
             renderer.initWindow();
-            renderer.startLoop(this::loop, 20); // ~50 Hz
+            renderer.startLoop(this::loop, 20);
         });
     }
 

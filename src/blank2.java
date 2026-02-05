@@ -7,7 +7,7 @@ public class blank2 {
     private Renderer renderer;
     //------------------
 
-    //Literally anything
+
 
 
 
