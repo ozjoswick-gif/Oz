@@ -118,6 +118,7 @@ public class Main{
 
             default:
                 // safety: reset
+                renderer.clearMarkers();
                 state = 9;
                 break;
         }

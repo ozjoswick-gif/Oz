@@ -19,11 +19,11 @@ public class OzPathing {
     private static final double SlowRadius = 6.0;
 
     // Heading (rotation) tuning
-    private static final double KP_HEADING = 2.2;
+    private static final double SpeedHeading = 2.2;
     private static final double MaxRotSpeedR = 6.0;   // rad/sec cap
 
     // Lateral correction (helps counter wheel inconsistencies / drift)
-    private static final double KP_LATERAL = 0.35;         // vy correction per unit lateral error (robot-frame units)
+    private static final double LateralSpeedCorrection = 0.35;         // vy correction per unit lateral error (robot-frame units)
 
     // Robot constants (must match Robot.java)
     private static final double M = 36.0;  // MOTOR_TO_LINEAR
@@ -103,13 +103,13 @@ public class OzPathing {
         double vy = speedCmd * uy; // right
 
         // later amt robot has strayed off line
-        double lateralCorrection = KP_LATERAL * relY;
+        double lateralCorrection = LateralSpeedCorrection * relY;
         vy += lateralCorrection;
 
         // heading control: rotate toward final heading while moving
         //not going to like this was ai
         double headingErr = normalizeAngle(targetPose.heading - heading);
-        double omega = KP_HEADING * headingErr;
+        double omega = SpeedHeading * headingErr;
 
         // moderate rotation while translating faster (don't let rotation dominate translation)
         double transMag = Math.hypot(vx, vy);
