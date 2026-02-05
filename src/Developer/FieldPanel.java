@@ -18,9 +18,10 @@ public class FieldPanel extends JPanel {
     public static final int ROBOT_SIZE_UNITS = 15;
     private static final int SCALE = 4;
 
-    // NEW: for bottom-right origin
+
     private static final double FIELD_CENTER_X = FIELD_UNITS / 2.0;
     private static final double FIELD_CENTER_Y = FIELD_UNITS / 2.0;
+
     private final Robot robot;
 
     private boolean rotateLabels = false;
