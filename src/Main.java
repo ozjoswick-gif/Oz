@@ -64,7 +64,6 @@ public class Main{
         // state machine
         switch (state) {
             case 0:
-
                 if (poseList.length > 1) {
                     pathing.follow(poseList[0], poseList[1]);
                     Telemetry.getInstance().addLine("State", "Commanded first move 0 - 1");
