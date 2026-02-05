@@ -11,13 +11,13 @@ public class Main{
     private Robot robot;
     private Renderer renderer;
     private OzPathing pathing;
-
+    public double startTime;
 
     private Pose[] poseList;
 
     // state machine
     private int state = 0;
-    private static final long WAIT_MS = 1000L; // pause length
+    private static final long WAIT_MS = 500L; // pause length
     private long PauseStartTime = 0L;
     private boolean timerGoing = false;
 
@@ -26,11 +26,12 @@ public class Main{
     }
 
     public void start() {
+        startTime = System.currentTimeMillis();
         robot = new Robot();
         pathing = new OzPathing(robot);
         renderer = new Renderer(robot);
 
-        robot.setInconsistency(0.05);
+        robot.setInconsistency(0.0);
 
         poseList = new Pose[] {
                 savedPoses.BlueFarStartPose,      // 0
@@ -60,7 +61,8 @@ public class Main{
 
     public void loop() {
         double dt = 0.02;
-
+        double elapsedSec = (System.currentTimeMillis() - startTime) / 1000.0;
+        Telemetry.getInstance().addLine("Time", elapsedSec);
         // state machine
         switch (state) {
             case 0:

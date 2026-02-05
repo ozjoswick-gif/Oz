@@ -8,20 +8,19 @@ public class OzPathing {
     private boolean busy = false;
     private final Robot robot;
 
-    // Robot footprint (must match FieldPanel.ROBOT_SIZE_UNITS)
-    private static final double ROBOT_SIZE_UNITS = 15.0;
-    private static final double ROBOT_HALF = ROBOT_SIZE_UNITS * 0.5;
+
+    private static final double ROBOT_SIZE_UNITS = 15.0; //idk how to use this from robot
 
     // Translation tuning
-    private static final double KP_TRANSLATION = 2.0;      // speed per unit distance (units/sec per unit error)
-    private static final double POSITION_TOLERANCE = 0.5;  // units (stop radius) -- measured at center
-    private static final double MAX_LINEAR_SPEED = 36.0;   // units/sec (allow full-power)
-    private static final double MIN_APPROACH_SPEED = 1.0;  // floor when near to avoid crawling
-    private static final double SLOWDOWN_RADIUS = 6.0;     // begin slowing inside this radius
+    private static final double speedErrorRate = 2.0;      // speed per unit distance (units/sec per unit error)
+    private static final double PosTol = 0.5;
+    private static final double MaxSpeed = 36.0;
+    private static final double MinSpeed = 1.0;
+    private static final double SlowRadius = 6.0;
 
     // Heading (rotation) tuning
-    private static final double KP_HEADING = 2.2;          // rad/sec per rad of heading error
-    private static final double MAX_ANGULAR_SPEED = 6.0;   // rad/sec cap
+    private static final double KP_HEADING = 2.2;
+    private static final double MaxRotSpeedR = 6.0;   // rad/sec cap
 
     // Lateral correction (helps counter wheel inconsistencies / drift)
     private static final double KP_LATERAL = 0.35;         // vy correction per unit lateral error (robot-frame units)
@@ -31,7 +30,7 @@ public class OzPathing {
     private static final double G = 12.0;  // ROTATION_GAIN
 
     // small deadband for tiny wheel commands
-    private static final double MOTOR_DEADBAND = 0.005;
+    private static final double MinMotorAmt = 0.005;
 
     public OzPathing(Robot robot) {
         this.robot = robot;
@@ -49,48 +48,38 @@ public class OzPathing {
         }
     }
 
-    public boolean isBusy() {
-        return busy;
-    }
 
     public Pose getTargetPose() {
         return targetPose;
     }
 
-    public void update() {
+    public void update() {  //actualy moves robot
         if (!busy || targetPose == null) {
             zeroMotors();
             return;
         }
 
         // compute robot center in world coordinates
-        double robotCenterX = robot.getX() + ROBOT_HALF;
-        double robotCenterY = robot.getY() + ROBOT_HALF;
-
-        // world-frame error measured from robot center to the target
-        double dx = targetPose.x - robotCenterX;
+        double robotCenterX = robot.getX() + ROBOT_SIZE_UNITS/2;
+        double robotCenterY = robot.getY() + ROBOT_SIZE_UNITS/2;
+        double dx = targetPose.x - robotCenterX; // distance from target
         double dy = targetPose.y - robotCenterY;
         double dist = Math.hypot(dx, dy);
 
-        // stop condition (center-based)
-        if (dist <= POSITION_TOLERANCE) {
+        if (dist <= PosTol) { // stop command
             busy = false;
             zeroMotors();
             return;
         }
 
-        // robot-frame vector to the target (forward = +X, right = +Y)
-        // compute using robot center and robot heading (same transform as Robot.getRelX/Y)
         double heading = robot.getHeading();
         double cos = Math.cos(heading);
         double sin = Math.sin(heading);
 
-        // relX = dx * cos + dy * sin
-        // relY = -dx * sin + dy * cos
+
         double relX = dx * cos + dy * sin;
         double relY = -dx * sin + dy * cos;
 
-        // direction unit vector (guard against zero)
         double ux = 0.0, uy = 0.0;
         double mag = Math.hypot(relX, relY);
         if (mag > 1e-8) {
@@ -99,36 +88,37 @@ public class OzPathing {
         }
 
         // desired translation speed magnitude (distance-proportional)
-        double speedCmd = KP_TRANSLATION * dist;
-        speedCmd = Math.min(speedCmd, MAX_LINEAR_SPEED);
+        double speedCmd = speedErrorRate * dist;
+        speedCmd = Math.min(speedCmd, MaxSpeed);
 
         // When inside slowdown radius, scale but keep a minimum
-        if (dist < SLOWDOWN_RADIUS) {
-            double frac = Math.max(0.25, dist / SLOWDOWN_RADIUS); // floor frac to avoid collapse
-            speedCmd = Math.max(MIN_APPROACH_SPEED, KP_TRANSLATION * dist * frac);
-            speedCmd = Math.min(speedCmd, MAX_LINEAR_SPEED);
+        if (dist < SlowRadius) {
+            double frac = Math.max(0.25, dist / SlowRadius); // floor frac to avoid collapse
+            speedCmd = Math.max(MinSpeed, speedErrorRate * dist * frac);
+            speedCmd = Math.min(speedCmd, MaxSpeed);
         }
 
-        // base translation command toward target in robot frame
+        //had to break out the unit circle for this one if you get a triangle and the hypotonus form the strait line
         double vx = speedCmd * ux; // forward
         double vy = speedCmd * uy; // right
 
-        // lateral feedback correction: push vy so relY is driven toward zero
+        // later amt robot has strayed off line
         double lateralCorrection = KP_LATERAL * relY;
         vy += lateralCorrection;
 
         // heading control: rotate toward final heading while moving
+        //not going to like this was ai
         double headingErr = normalizeAngle(targetPose.heading - heading);
         double omega = KP_HEADING * headingErr;
 
         // moderate rotation while translating faster (don't let rotation dominate translation)
         double transMag = Math.hypot(vx, vy);
-        double transScale = Math.min(1.0, transMag / MAX_LINEAR_SPEED);
+        double transScale = Math.min(1.0, transMag / MaxSpeed);
         omega *= (1.0 - 0.3 * transScale);
 
         // clamp angular speed
-        if (omega > MAX_ANGULAR_SPEED) omega = MAX_ANGULAR_SPEED;
-        if (omega < -MAX_ANGULAR_SPEED) omega = -MAX_ANGULAR_SPEED;
+        if (omega > MaxRotSpeedR) omega = MaxRotSpeedR;
+        if (omega < -MaxRotSpeedR) omega = -MaxRotSpeedR;
 
         // Convert vx, vy, omega (robot-frame) to motor powers using pseudoinverse (minimum-norm)
         // mFL = (vx - vy)/M - omega/G
@@ -154,11 +144,11 @@ public class OzPathing {
             mBR /= max;
         }
 
-        // apply small deadband so Robot smoothing can settle to zero when commanded tiny values
-        mFL = applyDeadband(mFL);
-        mFR = applyDeadband(mFR);
-        mBL = applyDeadband(mBL);
-        mBR = applyDeadband(mBR);
+        // makes sure forces are in limits
+        mFL = MinCheck(mFL);
+        mFR = MinCheck(mFR);
+        mBL = MinCheck(mBL);
+        mBR = MinCheck(mBR);
 
         // set motors
         robot.setMFL(mFL);
@@ -166,14 +156,13 @@ public class OzPathing {
         robot.setMBL(mBL);
         robot.setMBR(mBR);
 
-        // telemetry for tuning and diagnosing inconsistencies (include center coords)
-        Telemetry.getInstance().addLine("DistToTarget", dist);
+        Telemetry.getInstance().addLine("DistToTarget", dist); // distance of hypotonues
         Telemetry.getInstance().addLine("HeadingErr", headingErr);
         Telemetry.getInstance().addLine("omega_cmd", omega);
     }
 
-    private double applyDeadband(double v) {
-        if (Math.abs(v) < MOTOR_DEADBAND) return 0.0;
+    private double MinCheck(double v) {
+        if (Math.abs(v) < MinMotorAmt) return 0.0;
         return v;
     }
 
@@ -189,5 +178,8 @@ public class OzPathing {
         while (a >= Math.PI) a -= 2 * Math.PI;
         while (a < -Math.PI) a += 2 * Math.PI;
         return a;
+    }
+    public boolean isBusy() {
+        return busy;
     }
 }
